@@ -2,7 +2,7 @@ const router = require("express").Router();
 const authController = require("../../../controllers/mobile/auth/authController");
 const { validate } = require("../../../middelware/validate.middleware");
 const verifyToken = require("../../../middelware/verifyToken");
-const { registerUserSchema, verifyOtpSchema, setPasswordSchema, loginSchema, verifyOtpForLoginSchema, completeProfileSchema } = require("../../../validations/auth.validation");
+const { registerUserSchema, verifyOtpSchema, setPasswordSchema, loginSchema, verifyOtpForLoginSchema, completeProfileSchema, forgotPasswordSchema, verifyOtpForForgotPasswordSchema } = require("../../../validations/auth.validation");
 
 // Register User Route
 router.post("/register", validate(registerUserSchema), authController.registerUser);
@@ -22,5 +22,9 @@ router.post(
     validate(completeProfileSchema), 
     authController.completeProfile
   );
+
+router.post("/forgot-password",validate(forgotPasswordSchema), authController.forgotPassword);
+
+router.post("/verify-otp-forgot-password", validate(verifyOtpForForgotPasswordSchema), authController.verifyOtpForForgotPassword);
 
 module.exports = router;

@@ -5,7 +5,6 @@ const bcrypt = require("bcryptjs");
 const { catchAsyncError } = require("../../../middelware/catchAsyncError.js");
 const otpModel = require("../../../models/mobile/auth/otp.model.js");
 const service = require("../../../services/service.js");
-const dayjs = require("dayjs");
 
 // Register User -> using first send OTP and then verify OTP and then register user
 exports.registerUser = catchAsyncError(async (req, res, next) => {
@@ -84,6 +83,9 @@ exports.verifyOtp = catchAsyncError(async (req, res, next) => {
 
   // Check if OTP exists
   const existingOtp = await otpModel.findOne({ $or: [{ email: email.toLowerCase().trim() }, { phone: phone }] });
+  
+  console.log("existingOtp:",existingOtp);
+
   if (!existingOtp) {
     return response.responseHandlerWithError(
       res,
@@ -607,8 +609,83 @@ exports.forgotPassword = catchAsyncError(async (req, res, next) => {
     );
   }
 
+  const otpGenerated = service.genrateOtp();
+  const otpCreated = await otpModel.create({
+    fullName: user.fullName,
+    email: user.email,
+    phone: user.phone,
+    otp: otpGenerated,
+  });
   
-  
-  
+  if (!otpCreated) {
+    return response.responseHandlerWithError(
+      res,
+      false,
+      responseCode.INTERNAL_SERVER_ERROR,
+      "Failed to create OTP"
+    );
+  }
+  return response.responseHandlerWithData(
+    res,
+    true,
+    responseCode.CREATED,
+    "OTP sent successfully. It will expire in 1 minute. Please verify your email with OTP.",
+    { otp: otpGenerated }
+  );
 })
 
+exports.verifyOtpForForgotPassword = catchAsyncError(async (req, res, next) => {
+  const { email,otp } = req.body;
+
+  const currentTime = service.getCurrentTime();
+
+  const user = await AuthModel.findOne({ email: email.toLowerCase().trim() });
+  if (!user) {
+    return response.responseHandlerWithError(
+      res,
+      false,
+      responseCode.NOT_FOUND,
+      "User not found"
+    );
+  }
+
+  const existingOtp = await otpModel.findOne({ $or: [{ email: user.email.toLowerCase().trim() }, { phone: user.phone }] });
+  if (!existingOtp) {
+    return response.responseHandlerWithError(
+      res,
+      false,
+      responseCode.NOT_FOUND,
+      "OTP not found"
+    );
+  }
+  
+  if (existingOtp.otp !== otp) {
+    return response.responseHandlerWithError(
+      res,
+      false,
+      responseCode.UNAUTHORIZED,
+      "Invalid OTP"
+    );
+  }
+  
+  if (existingOtp.expiresAt < currentTime) {
+    return response.responseHandlerWithError(
+      res,
+      false,
+      responseCode.UNAUTHORIZED,
+      "OTP expired"
+    );
+  }
+
+  await otpModel.deleteOne({ _id: existingOtp._id });
+
+  const token = service.generateToken({ id: user._id });
+
+  return response.responseHandlerWithData(
+    res,
+    true,
+    responseCode.CREATED,
+    "OTP verified successfully, Using this please set your new password",
+    { token: token }
+  );
+})
