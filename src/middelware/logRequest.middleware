@@ -1,0 +1,14 @@
+const logRequestMiddleware = (req, res, next) => {
+    console.log('----- Incoming Request -----');
+    console.log('Method:', req.method);
+    console.log('URL:', req.originalUrl);
+    console.log('Query:', req.query);
+    console.log('Params:', req.params);
+    console.log('Body:', req.body);
+    console.log('----------------------------');
+
+
+    next(); // continue to the next middleware or route
+};
+
+module.exports = logRequestMiddleware;
