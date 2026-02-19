@@ -3,7 +3,7 @@ const response = require("../../../utilities/responseMsg.js");
 const responseCode = require("../../../utilities/responseCode.js");
 const bcrypt = require("bcryptjs");
 const { catchAsyncError } = require("../../../middelware/catchAsyncError.js");
-const otpModel = require("../../../models/mobile/auth/otp.model.js");
+const otpModel = require("../../../models/common/otp.model.js");
 const service = require("../../../services/service.js");
 
 // Register User -> using first send OTP and then verify OTP and then register user

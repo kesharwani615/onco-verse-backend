@@ -254,12 +254,24 @@ const completeProfileSchema = z.object({
 });
 
 const forgotPasswordSchema = z.object({
-  email: z.string().email("Invalid email format").toLowerCase().trim().regex(/^\S+@\S+\.\S+$/, "Invalid email format"),
-});
+  email: z.string({
+    required_error: "Email is required",
+    invalid_type_error: "Email must be a string",
+  }).email("Invalid email format").toLowerCase().trim().regex(/^\S+@\S+\.\S+$/, "Invalid email format"),
+}); 
 
 const verifyOtpForForgotPasswordSchema = z.object({
   email: z.string().email("Invalid email format").toLowerCase().trim().regex(/^\S+@\S+\.\S+$/, "Invalid email format"),
   otp: z.string().min(6, "OTP must be at least 6 characters").max(6, "OTP must not exceed 6 characters").regex(/^\d{6}$/, "Invalid OTP format"),
+});
+
+const adminLoginSchema = z.object({
+  email: z.string().email("Invalid email format").toLowerCase().trim().regex(/^\S+@\S+\.\S+$/, "Invalid email format"),
+  password: z.string().min(6, "Password must be at least 6 characters").max(100, "Password must not exceed 100 characters").regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$/, "Invalid password format"),
+});
+
+const resetPasswordSchema = z.object({
+  password: z.string().min(8, "Password must be at least 8 characters").max(100, "Password must not exceed 100 characters").regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/, "Invalid password format"),
 });
 
 module.exports = {
@@ -271,4 +283,6 @@ module.exports = {
   completeProfileSchema,
   forgotPasswordSchema,
   verifyOtpForForgotPasswordSchema,
+  adminLoginSchema,
+  resetPasswordSchema,
 };
