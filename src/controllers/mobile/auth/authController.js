@@ -39,12 +39,8 @@ exports.registerUser = catchAsyncError(async (req, res, next) => {
  console.log("existingOtp:",existingOtp);
 
   if (existingOtp) {
-    return response.responseHandlerWithError(
-      res,
-      false,
-      responseCode.CONFLICT,
-      "OTP already sent to this email or phone number"
-    );
+    await otpModel.deleteOne({ _id: existingOtp._id });
+    console.log("existingOtp deleted");
   }
 
   // Generate 6-digit OTP
