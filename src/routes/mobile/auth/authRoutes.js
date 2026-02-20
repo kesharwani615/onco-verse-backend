@@ -27,4 +27,6 @@ router.post("/forgot-password",validate(forgotPasswordSchema), authController.fo
 
 router.post("/verify-otp-forgot-password", validate(verifyOtpForForgotPasswordSchema), authController.verifyOtpForForgotPassword);
 
+router.get("/get-profile", verifyToken, authController.getProfile);
+
 module.exports = router;

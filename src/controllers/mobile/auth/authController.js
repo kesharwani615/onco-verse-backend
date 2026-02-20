@@ -487,7 +487,7 @@ exports.login = catchAsyncError(async (req, res, next) => {
 })
 
 // verify OTP for login using mobile number and otp
-exports.verifyOtpForLogin = catchAsyncError(async (req, res, next) => {
+exports.verifyOtpForLogin = catchAsyncError(async (req, res) => {
   const { email, phone,type, otp } = req.body;
 
   const currentTime = service.getCurrentTime();
@@ -592,7 +592,7 @@ if(type === "email") {
 })
 
 // forgot password using email 
-exports.forgotPassword = catchAsyncError(async (req, res, next) => {
+exports.forgotPassword = catchAsyncError(async (req, res) => {
   const { email } = req.body;
 
   const user = await AuthModel.findOne({ email: email.toLowerCase().trim() });
@@ -683,5 +683,122 @@ exports.verifyOtpForForgotPassword = catchAsyncError(async (req, res, next) => {
     responseCode.CREATED,
     "OTP verified successfully, Using this please set your new password",
     { token: token }
+  );
+})
+
+exports.getProfile = catchAsyncError(async (req, res) => {
+  const user = await AuthModel.findById(req.user.id);
+  if (!user) {
+    return response.responseHandlerWithError(
+      res,
+      false,
+      responseCode.NOT_FOUND,
+      "User not found"
+    );
+  }
+
+  const profile = await AuthModel.aggregate([
+    {
+      $match: { _id: user._id }
+    },
+    {
+      $project: {
+        _id: 0,
+        id: { $toString: "$_id" },
+        fullName: 1,
+        email: 1,
+        phone: 1,
+        profilePicture: 1,
+        dateOfBirth: 1,
+        gender: 1,
+        height: 1,
+        weight: 1,
+        country: 1,
+        city: 1,
+        zipCode: 1,
+        hasPrivateInsurance: 1,
+        insuranceProviderName: 1,
+        hasCancerDiagnosis: 1,
+        cancerType: 1,
+        cancerSubtype: 1,
+        cancerStage: 1,
+        hasCancerProgressedOrRecurred: 1,
+        cancerDetails: 1,
+        hasReceivedTreatment: 1,
+        treatments: 1,
+        userRole: 1,
+        caregiver: 1,
+        allowCaregiverManageRecords: 1,
+        hasUndergoneTesting: 1,
+        hasReceivedTreatmentSoFar: 1,
+        geneticTests: 1,
+        testReports: 1,
+        biomarkers: 1,
+        onActiveTreatment: 1,
+        currentMedicationRegimen: 1,
+        treatingHospital: 1,
+        oncologistName: 1,
+        nextFollowUpDate: 1,
+        currentSymptoms: 1,
+        overallSymptomSeverity: 1,
+        experiencingSideEffects: 1,
+        sideEffectsDescription: 1,
+        recentHospitalizations: 1,
+        enableWeeklyTracking: 1,
+        hasOtherMedicalConditions: 1,
+        medicalConditions: 1,
+        otherMedicalConditionDetails: 1,
+        hasFamilyHistoryOfCancer: 1,
+        allergies: 1,
+        aiAutoExtractPreference: 1,
+        pathologyReports: 1,
+        imagingReports: 1,
+        treatmentSummaries: 1,  
+        prescriptions: 1,
+        labResults: 1,
+        interestedInClinicalTrials: 1,
+        clinicalTrialTravelPreference: 1,
+        primaryGoals: 1,
+        emotionalWellnessRating: 1,
+        wellbeingSupportAreas: 1,
+        additionalWellbeingNotes: 1,
+        smokingStatus: 1,
+        smokingFrequency: 1,
+        alcoholConsumptionStatus: 1,
+        alcoholConsumptionFrequency: 1,
+        consentToStoreMedicalData: 1,
+        consentToResearchAndImprovement: 1,
+        consentToPersonalizedAlerts: 1,
+        understandsRevocationRights: 1,
+        agreesToPrivacyPolicy: 1,
+        consentsToDataForResearchAndAI: 1,
+        isVerified: 1,
+        isActive: 1,
+        isProfileCompleted: 1,
+        stepCount: 1,
+        language: 1,
+        createdAt: 1,
+        updatedAt: 1
+      }
+    }
+  ]);
+
+  if (!profile || profile.length === 0) {
+    return response.responseHandlerWithError(
+      res,
+      false,
+      responseCode.NOT_FOUND,
+      "Profile not found"
+    );
+  }
+
+  console.log("profile:",profile);
+
+  return response.responseHandlerWithData(
+    res,
+    true,
+    responseCode.CREATED,
+    "Profile fetched successfully",
+    { profile: profile[0] }
   );
 })
