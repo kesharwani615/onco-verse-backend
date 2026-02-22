@@ -411,6 +411,10 @@ exports.login = catchAsyncError(async (req, res, next) => {
       );
     }
 
+    const existingOtp = await otpModel.findOne({ email: email.toLowerCase().trim() });
+    if (existingOtp) {
+      await otpModel.deleteOne({ _id: existingOtp._id });
+    }
    
     const otpGenerated = service.genrateOtp();
 
@@ -456,6 +460,11 @@ exports.login = catchAsyncError(async (req, res, next) => {
         responseCode.UNAUTHORIZED,
         "User not verified"
       );
+    }
+
+    const existingOtp = await otpModel.findOne({ phone: phone });
+    if (existingOtp) {
+      await otpModel.deleteOne({ _id: existingOtp._id });
     }
 
     const otpGenerated = service.genrateOtp();
@@ -605,13 +614,18 @@ exports.forgotPassword = catchAsyncError(async (req, res) => {
     );
   }
 
+  const existingOtp = await otpModel.findOne({ email: email.toLowerCase().trim() });
+  if (existingOtp) {
+    await otpModel.deleteOne({ _id: existingOtp._id });
+  }
+
   const otpGenerated = service.genrateOtp();
   const otpCreated = await otpModel.create({
     fullName: user.fullName,
     email: user.email,
     phone: user.phone,
     otp: otpGenerated,
-  });
+  });f
   
   if (!otpCreated) {
     return response.responseHandlerWithError(
