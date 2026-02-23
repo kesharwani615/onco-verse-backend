@@ -51,6 +51,11 @@ exports.forgotPassword = catchAsyncError(async (req, res) => {
         );
     }
 
+    const existingOtp = await otpModel.findOne({ email: admin.email.toLowerCase().trim() });
+    if (existingOtp) {
+        await otpModel.deleteOne({ _id: existingOtp._id });
+    }
+
     const otpGenerated = service.genrateOtp();
 
     console.log("otpGenerated:",otpGenerated);

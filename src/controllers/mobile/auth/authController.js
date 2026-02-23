@@ -411,36 +411,18 @@ exports.login = catchAsyncError(async (req, res, next) => {
       );
     }
 
-    const existingOtp = await otpModel.findOne({ email: email.toLowerCase().trim() });
-    if (existingOtp) {
-      await otpModel.deleteOne({ _id: existingOtp._id });
-    }
-   
-    const otpGenerated = service.genrateOtp();
+    const token = service.generateToken({ id: user._id });
 
-    const otpCreated = await otpModel.create({
-      fullName: user.fullName,
-      email: user.email,
-      phone: user.phone,
-      otp: otpGenerated,
-    });
-
-    if (!otpCreated) {
-      return response.responseHandlerWithError(
-        res,
-        false,
-        responseCode.INTERNAL_SERVER_ERROR,
-        "Failed to create OTP"
-      );
-    }
+    const { password: _, ...userData } = user.toObject();
 
     return response.responseHandlerWithData(
       res,
       true,
       responseCode.CREATED,
-      "OTP sent successfully. It will expire in 1 minute. Please verify your phone number with OTP.",
-      { otp: otpGenerated }
+      "Login successful",
+      { user: userData, token: token }
     );
+
   } else if (type === "phone") {
     const user = await AuthModel.findOne({ phone: phone });
 
@@ -497,57 +479,10 @@ exports.login = catchAsyncError(async (req, res, next) => {
 
 // verify OTP for login using mobile number and otp
 exports.verifyOtpForLogin = catchAsyncError(async (req, res) => {
-  const { email, phone,type, otp } = req.body;
+  const { phone, otp } = req.body;
 
   const currentTime = service.getCurrentTime();
 
-if(type === "email") {
-
-  const user = await AuthModel.findOne({ email: email.toLowerCase().trim() });
-  if (!user) {
-    return response.responseHandlerWithError(
-      res,
-      false,
-      responseCode.NOT_FOUND,
-      "User not found"
-    );
-  }
-  const existingOtp = await otpModel.findOne({ email: email.toLowerCase().trim() });
-  if (!existingOtp) {
-    return response.responseHandlerWithError(
-      res,
-      false,
-      responseCode.NOT_FOUND,
-      "OTP expired"
-    );
-  }
-  if (existingOtp.otp !== otp) {
-    return response.responseHandlerWithError(
-      res,
-      false,
-      responseCode.UNAUTHORIZED,
-      "Invalid OTP"
-    );
-  }
-  if (existingOtp.expiresAt < currentTime) {
-    return response.responseHandlerWithError(
-      res,
-      false,
-      responseCode.UNAUTHORIZED,
-      "OTP expired"
-    );
-  }
-  await otpModel.deleteOne({ _id: existingOtp._id });
-  const token = service.generateToken({ id: user._id });
-
-  return response.responseHandlerWithData(
-    res,
-    true,
-    responseCode.CREATED,
-    "Login successful",
-    { user: user, token: token }
-  );
-}else{
   const user = await AuthModel.findOne({ phone: phone });
   if (!user) {
     return response.responseHandlerWithError(
@@ -564,7 +499,7 @@ if(type === "email") {
       res,
       false,
       responseCode.NOT_FOUND,
-      "OTP not found"
+      "OTP expired"
     );
   }
 
@@ -589,15 +524,15 @@ if(type === "email") {
   await otpModel.deleteOne({ _id: existingOtp._id });
 
   const token = service.generateToken({ id: user._id });
+  const { password: _, ...userData } = user.toObject();
 
   return response.responseHandlerWithData(
     res,
     true,
     responseCode.CREATED,
     "Login successful",
-    { user: user, token: token }
+    { user: userData, token: token }
   );
-}
 })
 
 // forgot password using email 
@@ -625,7 +560,7 @@ exports.forgotPassword = catchAsyncError(async (req, res) => {
     email: user.email,
     phone: user.phone,
     otp: otpGenerated,
-  });f
+  });
   
   if (!otpCreated) {
     return response.responseHandlerWithError(
@@ -665,7 +600,7 @@ exports.verifyOtpForForgotPassword = catchAsyncError(async (req, res, next) => {
       res,
       false,
       responseCode.NOT_FOUND,
-      "OTP not found"
+      "OTP expired"
     );
   }
   
