@@ -7,7 +7,7 @@ const otpModel = require("../../../models/common/otp.model.js");
 const service = require("../../../services/service.js");
 
 // Register User -> using first send OTP and then verify OTP and then register user
-exports.registerUser = catchAsyncError(async (req, res, next) => {
+exports.registerUser = catchAsyncError(async (req, res) => {
   const { fullName, email, phone } = req.body;
  
   if (!fullName || !email || !phone) {
@@ -87,7 +87,7 @@ exports.registerUser = catchAsyncError(async (req, res, next) => {
   );
 });
 // Verify OTP
-exports.verifyOtp = catchAsyncError(async (req, res, next) => {
+exports.verifyOtp = catchAsyncError(async (req, res) => {
   const { email, phone, otp:{otpForPhone, otpForEmail} } = req.body;
 
   const currentTime = service.getCurrentTime();
@@ -103,7 +103,7 @@ exports.verifyOtp = catchAsyncError(async (req, res, next) => {
       responseCode.NOT_FOUND,
       "Both OTP Expired"
     );
-  }
+  } 
  
   if(existingOtpWithPhone){
     if(existingOtpWithPhone.otp !== otpForPhone){
@@ -144,8 +144,8 @@ exports.verifyOtp = catchAsyncError(async (req, res, next) => {
   }
 
   // Delete OTP after successful verification
-  await otpModel.deleteOne({ _id: existingOtpWithPhone._id });
-  await otpModel.deleteOne({ _id: existingOtpWithEmail._id });
+  await otpModel.deleteOne({ _id: existingOtpWithPhone._id, type: "phone" });
+  await otpModel.deleteOne({ _id: existingOtpWithEmail._id, type: "email" });
 
   //create user
   const userCreated = await AuthModel.create({
@@ -179,7 +179,7 @@ exports.verifyOtp = catchAsyncError(async (req, res, next) => {
 })
 
 // resend OTP
-exports.resendOtp = catchAsyncError(async (req, res, next) => {
+exports.resendOtp = catchAsyncError(async (req, res) => {
   const {fullName, email, phone, type } = req.body;
 
   console.log("email:",email);
@@ -233,7 +233,7 @@ exports.resendOtp = catchAsyncError(async (req, res, next) => {
 })
 
 // set password
-exports.setPassword = catchAsyncError(async (req, res, next) => {
+exports.setPassword = catchAsyncError(async (req, res) => {
   const { password } = req.body;
 
   const user = await AuthModel.findById(req.user.id);
@@ -260,7 +260,7 @@ exports.setPassword = catchAsyncError(async (req, res, next) => {
 })
 
 // complete profile
-exports.completeProfile = catchAsyncError(async (req, res, next) => {
+exports.completeProfile = catchAsyncError(async (req, res,) => {
   // Get user from token (set by verifyToken middleware)
   const user = await AuthModel.findById(req.user.id);
   
@@ -691,7 +691,7 @@ exports.forgotPassword = catchAsyncError(async (req, res) => {
   );
 })
 
-exports.verifyOtpForForgotPassword = catchAsyncError(async (req, res, next) => {
+exports.verifyOtpForForgotPassword = catchAsyncError(async (req, res) => {
   const { email,otp } = req.body;
 
   const currentTime = service.getCurrentTime();

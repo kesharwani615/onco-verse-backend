@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
- 
+
 const otpSchema = new mongoose.Schema(
   {
     fullName: {
@@ -33,7 +33,7 @@ const otpSchema = new mongoose.Schema(
     expiresAt: {
       type: Date,
       default: Date.now,
-      expires: 60, // Auto delete after 60 sec
+      expires: 300, // Auto delete after 60 sec
     },
   },
   {
