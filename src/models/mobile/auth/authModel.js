@@ -274,11 +274,6 @@ const userSchema = new mongoose.Schema(
       default: null
     },
 
-    hasReceivedTreatmentSoFar: {
-      type: Boolean,
-      default: null
-    },
-
     geneticTests: [{
       type: String,
       enum: [
@@ -396,13 +391,6 @@ const userSchema = new mongoose.Schema(
         "Others"
       ]
     }],
-
-    otherMedicalConditionDetails: {
-      type: String,
-      default: null,
-      trim: true
-    },
-
     hasFamilyHistoryOfCancer: {
       type: Boolean,
       default: null

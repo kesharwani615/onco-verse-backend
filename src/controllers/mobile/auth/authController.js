@@ -220,21 +220,19 @@ exports.completeProfile = catchAsyncError(async (req, res, next) => {
     'hasCancerProgressedOrRecurred', 'cancerDetails',
     'hasReceivedTreatment', 'treatments',
     'userRole', 'allowCaregiverManageRecords',
-    'hasUndergoneTesting', 'hasReceivedTreatmentSoFar', 'geneticTests',
+    'hasUndergoneTesting', 'geneticTests',
     'testReports', 'biomarkers',
     'onActiveTreatment', 'currentMedicationRegimen', 'treatingHospital',
     'oncologistName', 'nextFollowUpDate',
     'currentSymptoms', 'overallSymptomSeverity', 'experiencingSideEffects',
     'sideEffectsDescription', 'recentHospitalizations', 'enableWeeklyTracking',
-    'hasOtherMedicalConditions', 'medicalConditions', 'otherMedicalConditionDetails',
+    'hasOtherMedicalConditions', 'medicalConditions',
     'hasFamilyHistoryOfCancer', 'allergies',
     'aiAutoExtractPreference', 'pathologyReports', 'imagingReports',
     'treatmentSummaries', 'prescriptions', 'labResults',
     'interestedInClinicalTrials', 'clinicalTrialTravelPreference',
     'primaryGoals',
     'emotionalWellnessRating', 'wellbeingSupportAreas', 'additionalWellbeingNotes',
-    'smokingStatus', 'smokingFrequency', 'alcoholConsumptionStatus',
-    'alcoholConsumptionFrequency',
     'consentToStoreMedicalData', 'consentToResearchAndImprovement',
     'consentToPersonalizedAlerts', 'understandsRevocationRights',
     'agreesToPrivacyPolicy', 'consentsToDataForResearchAndAI',
@@ -253,13 +251,39 @@ exports.completeProfile = catchAsyncError(async (req, res, next) => {
   } 
 
   // Mark profile as completed if all required consents are given
-  if (
-    updateData.agreesToPrivacyPolicy === true &&
-    updateData.consentToStoreMedicalData === true &&
-    updateData.understandsRevocationRights === true
-  ) {
+  // if (
+  //   updateData.agreesToPrivacyPolicy === true &&
+  //   updateData.consentToStoreMedicalData === true &&
+  //   updateData.understandsRevocationRights === true
+  // ) {
+  //   user.isProfileCompleted = true;
+  // }
+
+  const mandatoryFields = [
+    'fullName', 'profilePicture', 'dateOfBirth', 'gender',
+    'country', 'city', 'zipCode', 'hasPrivateInsurance', 'insuranceProviderName',
+    'hasCancerDiagnosis', 'cancerType', 'cancerSubtype', 'cancerStage',
+    'hasCancerProgressedOrRecurred', 'cancerDetails',
+    'hasReceivedTreatment', 'treatments',
+    'userRole', 'allowCaregiverManageRecords',
+    'hasUndergoneTesting', 'geneticTests',
+    'testReports', 'biomarkers',
+    'onActiveTreatment', 'currentMedicationRegimen', 'treatingHospital',
+    'oncologistName', 'nextFollowUpDate',
+    'hasOtherMedicalConditions', 'medicalConditions',
+    'hasFamilyHistoryOfCancer', 'allergies',
+    'consentToStoreMedicalData', 'consentToResearchAndImprovement',
+    'consentToPersonalizedAlerts', 'understandsRevocationRights',
+    'agreesToPrivacyPolicy', 'consentsToDataForResearchAndAI',
+    'stepCount'
+  ];
+
+   const missingMandatoryFields = mandatoryFields.filter(field => !updateData[field]);
+
+  if (missingMandatoryFields.length === 0) {
     user.isProfileCompleted = true;
-  }
+  } 
+   console.log("missingMandatoryFields:",missingMandatoryFields);
 
   await user.save();
 
@@ -297,7 +321,6 @@ exports.completeProfile = catchAsyncError(async (req, res, next) => {
         caregiver: 1,
         allowCaregiverManageRecords: 1,
         hasUndergoneTesting: 1,
-        hasReceivedTreatmentSoFar: 1,
         geneticTests: 1,
         testReports: 1,
         biomarkers: 1,
@@ -314,7 +337,6 @@ exports.completeProfile = catchAsyncError(async (req, res, next) => {
         enableWeeklyTracking: 1,
         hasOtherMedicalConditions: 1,
         medicalConditions: 1,
-        otherMedicalConditionDetails: 1,
         hasFamilyHistoryOfCancer: 1,
         allergies: 1,
         aiAutoExtractPreference: 1,
@@ -368,6 +390,8 @@ exports.completeProfile = catchAsyncError(async (req, res, next) => {
       : "Profile updated successfully",
     {
       user: userData[0],
+      missingMandatoryFields: missingMandatoryFields,
+      mandatoryFields: mandatoryFields,
       isProfileCompleted: user.isProfileCompleted,
       stepCount: user.stepCount
     }
@@ -679,7 +703,6 @@ exports.getProfile = catchAsyncError(async (req, res) => {
         caregiver: 1,
         allowCaregiverManageRecords: 1,
         hasUndergoneTesting: 1,
-        hasReceivedTreatmentSoFar: 1,
         geneticTests: 1,
         testReports: 1,
         biomarkers: 1,
@@ -696,7 +719,6 @@ exports.getProfile = catchAsyncError(async (req, res) => {
         enableWeeklyTracking: 1,
         hasOtherMedicalConditions: 1,
         medicalConditions: 1,
-        otherMedicalConditionDetails: 1,
         hasFamilyHistoryOfCancer: 1,
         allergies: 1,
         aiAutoExtractPreference: 1,
