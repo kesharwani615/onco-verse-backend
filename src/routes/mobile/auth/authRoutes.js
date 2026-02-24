@@ -29,4 +29,6 @@ router.post("/verify-otp-forgot-password", validate(verifyOtpForForgotPasswordSc
 
 router.get("/get-profile", verifyToken, authController.getProfile);
 
+router.post("/resend-otp", authController.resendOtp);
+
 module.exports = router;

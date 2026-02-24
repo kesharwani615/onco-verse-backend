@@ -8,15 +8,27 @@ const service = require("../../../services/service.js");
 
 // Register User -> using first send OTP and then verify OTP and then register user
 exports.registerUser = catchAsyncError(async (req, res, next) => {
-  const { fullName, email, phone} = req.body;
-
-  // Check if user already exists with email or phone
+  const { fullName, email, phone } = req.body;
+ 
+  if (!fullName || !email || !phone) {
+    return response.responseHandlerWithError(
+      res,
+      false,
+      responseCode.BAD_REQUEST,
+      "Full name, email and phone are required"
+    );
+  }
+ 
+  const formattedEmail = email.toLowerCase().trim();
+  const trimmedName = fullName.trim();
+ 
+  // Check if user already exists
   const existingUser = await AuthModel.findOne({
-    $or: [{ email: email.toLowerCase().trim() }, { phone: phone }]
+    $or: [{ email: formattedEmail }, { phone }],
   });
-
+ 
   if (existingUser) {
-    if (existingUser.email === email.toLowerCase().trim()) {
+    if (existingUser.email === formattedEmail) {
       return response.responseHandlerWithError(
         res,
         false,
@@ -24,6 +36,7 @@ exports.registerUser = catchAsyncError(async (req, res, next) => {
         "User with this email already exists"
       );
     }
+ 
     if (existingUser.phone === phone) {
       return response.responseHandlerWithError(
         res,
@@ -33,61 +46,46 @@ exports.registerUser = catchAsyncError(async (req, res, next) => {
       );
     }
   }
-
-  // Check if OTP already exists for this phone number
-  const existingOtpWithPhone = await otpModel.findOne({ phone: phone });
-  if(existingOtpWithPhone){
-    await otpModel.deleteOne({ _id: existingOtpWithPhone._id });
-  }
-  const existingOtpWithEmail = await otpModel.findOne({ email: email.toLowerCase().trim() });
-  if(existingOtpWithEmail){
-    await otpModel.deleteOne({ _id: existingOtpWithEmail._id });
-  }
-
-
-
-  // Generate 6-digit OTP
-  const otpGeneratedForPhone = service.genrateOtp();
-  const otpGeneratedForEmail = service.genrateOtp();
-
-  const otpCreatedForPhone = await otpModel.create({
-    fullName: fullName.trim(),
-    phone: phone,
-    otp: otpGeneratedForPhone,
+ 
+  // Delete old OTPs for this email & phone
+  await otpModel.deleteMany({
+    $or: [
+      { phone, type: "phone" },
+      { email: formattedEmail, type: "email" },
+    ],
   });
-
-  if (!otpCreatedForPhone) {
-    return response.responseHandlerWithError(
-      res,
-      false,
-      responseCode.INTERNAL_SERVER_ERROR,
-      "Failed to create OTP"
-    );
-  }
-
-  const otpCreatedForEmail = await otpModel.create({
-    fullName: fullName.trim(),
-    email: email.toLowerCase().trim(),
-    otp: otpGeneratedForEmail,
+ 
+  // Generate OTPs
+  const otpForPhone = service.genrateOtp();
+  const otpForEmail = service.genrateOtp();
+ 
+  // Create Phone OTP
+  await otpModel.create({
+    fullName: trimmedName,
+    phone,
+    otp: otpForPhone,
+    type: "phone",
   });
-  if (!otpCreatedForEmail) {
-    return response.responseHandlerWithError(
-      res,
-      false,
-      responseCode.INTERNAL_SERVER_ERROR,
-      "Failed to create OTP"
-    );
-  }
-
+ 
+  // Create Email OTP
+  await otpModel.create({
+    fullName: trimmedName,
+    email: formattedEmail,
+    otp: otpForEmail,
+    type: "email",
+  });
+ 
   return response.responseHandlerWithData(
     res,
     true,
     responseCode.CREATED,
-    "OTP sent successfully. It will expire in 1 minute. Please verify your phone number with OTP.",
-    { otpForPhone: otpGeneratedForPhone, otpForEmail: otpGeneratedForEmail }
+    "OTP sent successfully. It will expire in 1 minute.",
+    {
+      otpForPhone,
+      otpForEmail,
+    }
   );
 });
-
 // Verify OTP
 exports.verifyOtp = catchAsyncError(async (req, res, next) => {
   const { email, phone, otp:{otpForPhone, otpForEmail} } = req.body;
@@ -178,6 +176,72 @@ exports.verifyOtp = catchAsyncError(async (req, res, next) => {
     "User created successfully",
     { user: userCreated, token: token }
   );
+})
+
+// resend OTP
+exports.resendOtp = catchAsyncError(async (req, res, next) => {
+  const {fullName, email, phone, type } = req.body;
+
+  console.log("email:",email);
+
+  if(type === "email"){
+    const existingOtpWithEmail = await otpModel.findOne({ email: email.toLowerCase().trim() });
+    console.log("existingOtpWithEmail:",existingOtpWithEmail);
+    
+    if(existingOtpWithEmail){
+      console.log("existingOtpWithEmail found, deleting...");
+      await otpModel.deleteOne({ _id: existingOtpWithEmail._id });
+    }
+     
+    const otpGenerated = service.genrateOtp();
+
+    const otpCreated = await otpModel.create({
+      fullName: fullName,
+      email: email.toLowerCase().trim(),
+      otp: otpGenerated,
+     });
+     if(!otpCreated){
+      return response.responseHandlerWithError(
+        res,
+        false,
+        responseCode.INTERNAL_SERVER_ERROR,
+        "Failed to create OTP"
+      );
+    }
+    return response.responseHandlerWithData(
+      res,
+      true,
+      responseCode.CREATED,
+      "OTP sent successfully. It will expire in 1 minute. Please verify your email with OTP.",
+      { otpForEmail: otpGenerated }
+    );
+  }else{
+    const existingOtpWithPhone = await otpModel.findOne({ phone: phone });
+    if(existingOtpWithPhone){
+      await otpModel.deleteOne({ _id: existingOtpWithPhone._id });
+    }
+    const otpGenerated = service.genrateOtp();
+    const otpCreated = await otpModel.create({
+      fullName: fullName,
+      phone: phone,
+      otp: otpGenerated,
+    });
+    if(!otpCreated){
+      return response.responseHandlerWithError(
+        res,
+        false,
+        responseCode.INTERNAL_SERVER_ERROR,
+        "Failed to create OTP"
+      );
+    }
+    return response.responseHandlerWithData(
+      res,
+      true,
+      responseCode.CREATED,
+      "OTP sent successfully. It will expire in 1 minute. Please verify your phone number with OTP.",
+      { otpForPhone: otpGenerated }
+    );
+  }
 })
 
 // set password
