@@ -7,7 +7,7 @@ const { registerUserSchema, verifyOtpSchema, setPasswordSchema, loginSchema, ver
 // Register User Route
 router.post("/register", validate(registerUserSchema), authController.registerUser);
 
-router.post("/verify-otp", validate(verifyOtpSchema), authController.verifyOtp);
+router.post("/verify-otp", authController.verifyOtp);
 
 router.post("/set-password", validate(setPasswordSchema), verifyToken, authController.setPassword);
 

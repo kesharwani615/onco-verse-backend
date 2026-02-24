@@ -35,25 +35,42 @@ exports.registerUser = catchAsyncError(async (req, res, next) => {
   }
 
   // Check if OTP already exists for this phone number
-  const existingOtp = await otpModel.findOne({ $or: [{ email: email.toLowerCase().trim() }, { phone: phone }] });
- console.log("existingOtp:",existingOtp);
-
-  if (existingOtp) {
-    await otpModel.deleteOne({ _id: existingOtp._id });
-    console.log("existingOtp deleted");
+  const existingOtpWithPhone = await otpModel.findOne({ phone: phone });
+  if(existingOtpWithPhone){
+    await otpModel.deleteOne({ _id: existingOtpWithPhone._id });
+  }
+  const existingOtpWithEmail = await otpModel.findOne({ email: email.toLowerCase().trim() });
+  if(existingOtpWithEmail){
+    await otpModel.deleteOne({ _id: existingOtpWithEmail._id });
   }
 
-  // Generate 6-digit OTP
-  const otpGenerated = service.genrateOtp();
 
-  const otpCreated = await otpModel.create({
+
+  // Generate 6-digit OTP
+  const otpGeneratedForPhone = service.genrateOtp();
+  const otpGeneratedForEmail = service.genrateOtp();
+
+  const otpCreatedForPhone = await otpModel.create({
     fullName: fullName.trim(),
-    email: email.toLowerCase().trim(),
     phone: phone,
-    otp: otpGenerated,
+    otp: otpGeneratedForPhone,
   });
 
-  if (!otpCreated) {
+  if (!otpCreatedForPhone) {
+    return response.responseHandlerWithError(
+      res,
+      false,
+      responseCode.INTERNAL_SERVER_ERROR,
+      "Failed to create OTP"
+    );
+  }
+
+  const otpCreatedForEmail = await otpModel.create({
+    fullName: fullName.trim(),
+    email: email.toLowerCase().trim(),
+    otp: otpGeneratedForEmail,
+  });
+  if (!otpCreatedForEmail) {
     return response.responseHandlerWithError(
       res,
       false,
@@ -67,57 +84,76 @@ exports.registerUser = catchAsyncError(async (req, res, next) => {
     true,
     responseCode.CREATED,
     "OTP sent successfully. It will expire in 1 minute. Please verify your phone number with OTP.",
-    { otp: otpGenerated}
+    { otpForPhone: otpGeneratedForPhone, otpForEmail: otpGeneratedForEmail }
   );
 });
 
 // Verify OTP
 exports.verifyOtp = catchAsyncError(async (req, res, next) => {
-  const { email, phone, otp } = req.body;
+  const { email, phone, otp:{otpForPhone, otpForEmail} } = req.body;
 
   const currentTime = service.getCurrentTime();
 
   // Check if OTP exists
-  const existingOtp = await otpModel.findOne({ $or: [{ email: email.toLowerCase().trim() }, { phone: phone }] });
-  
-  console.log("existingOtp:",existingOtp);
+  const existingOtpWithPhone = await otpModel.findOne({ phone: phone });
+  const existingOtpWithEmail = await otpModel.findOne({ email: email.toLowerCase().trim() });
 
-  if (!existingOtp) {
+  if (!existingOtpWithPhone && !existingOtpWithEmail) {
     return response.responseHandlerWithError(
       res,
       false,
       responseCode.NOT_FOUND,
-      "OTP not found"
+      "Both OTP Expired"
     );
   }
-
-  if (existingOtp.otp !== otp) {
-    return response.responseHandlerWithError(
-      res,
-      false,
-      responseCode.UNAUTHORIZED,
-      "Invalid OTP"
-    );
+ 
+  if(existingOtpWithPhone){
+    if(existingOtpWithPhone.otp !== otpForPhone){
+      return response.responseHandlerWithError(
+        res,
+        false,
+        responseCode.UNAUTHORIZED,
+        "Invalid OTP for phone"
+      );
+    }
+    if(existingOtpWithPhone.expiresAt < currentTime){
+      return response.responseHandlerWithError(
+        res,
+        false,
+        responseCode.UNAUTHORIZED,
+        "OTP expired for phone"
+      );
+    }
   }
 
-  // Check if OTP has expired
-  if (existingOtp.expiresAt < currentTime) {
-    return response.responseHandlerWithError(
-      res,
-      false,
-      responseCode.UNAUTHORIZED,
-      "OTP expired"
-    );
+  if(existingOtpWithEmail){
+    if(existingOtpWithEmail.otp !== otpForEmail){
+      return response.responseHandlerWithError(
+        res,
+        false,
+        responseCode.UNAUTHORIZED,
+        "Invalid OTP for email"
+      );
+    }
+    if(existingOtpWithEmail.expiresAt < currentTime){
+      return response.responseHandlerWithError(
+        res,
+        false,
+        responseCode.UNAUTHORIZED,
+        "OTP expired for email"
+      );
+    }
   }
 
   // Delete OTP after successful verification
-  await otpModel.deleteOne({ _id: existingOtp._id });
+  await otpModel.deleteOne({ _id: existingOtpWithPhone._id });
+  await otpModel.deleteOne({ _id: existingOtpWithEmail._id });
 
   //create user
   const userCreated = await AuthModel.create({
-    fullName: existingOtp.fullName,
-    email: existingOtp.email,
-    phone: existingOtp.phone,
+    fullName: existingOtpWithPhone.fullName,
+    email: existingOtpWithEmail.email,
+    phone: existingOtpWithPhone.phone,
     isVerified: true,
     isActive: true,
     stepCount: 0,

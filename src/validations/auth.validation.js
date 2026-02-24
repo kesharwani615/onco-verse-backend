@@ -47,14 +47,10 @@ const verifyOtpSchema = z.object({
     .min(10, "Phone number must be at least 10 characters")
     .max(20, "Phone number must not exceed 20 characters")
     .regex(/^\+?[1-9]\d{1,14}$/, "Invalid phone number format"),
-  otp: z
-    .string({
-      required_error: "OTP is required",
-      invalid_type_error: "OTP must be a string",
-    })
-    .min(6, "OTP must be at least 6 characters")
-    .max(6, "OTP must not exceed 6 characters")
-    .regex(/^\d{6}$/, "Invalid OTP format")
+    otp:{
+      otpForPhone: z.string().min(6, "OTP must be at least 6 characters").max(6, "OTP must not exceed 6 characters").regex(/^\d{6}$/, "Invalid OTP format"),
+      otpForEmail: z.string().min(6, "OTP must be at least 6 characters").max(6, "OTP must not exceed 6 characters").regex(/^\d{6}$/, "Invalid OTP format"),
+    }
 });
 
 const setPasswordSchema = z.object({
