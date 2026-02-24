@@ -185,29 +185,24 @@ exports.resendOtp = catchAsyncError(async (req, res, next) => {
   console.log("email:",email);
 
   if(type === "email"){
-    const existingOtpWithEmail = await otpModel.findOne({ email: email.toLowerCase().trim() });
+    const existingOtpWithEmail = await otpModel.findOne({ email: email.toLowerCase().trim(),type: "email" });
     console.log("existingOtpWithEmail:",existingOtpWithEmail);
     
     if(existingOtpWithEmail){
       console.log("existingOtpWithEmail found, deleting...");
-      await otpModel.deleteOne({ _id: existingOtpWithEmail._id });
+      await otpModel.deleteOne({ _id: existingOtpWithEmail._id,type: "email" });
     }
      
     const otpGenerated = service.genrateOtp();
 
-    const otpCreated = await otpModel.create({
+    await otpModel.create({
       fullName: fullName,
       email: email.toLowerCase().trim(),
       otp: otpGenerated,
-     });
-     if(!otpCreated){
-      return response.responseHandlerWithError(
-        res,
-        false,
-        responseCode.INTERNAL_SERVER_ERROR,
-        "Failed to create OTP"
-      );
-    }
+      type: "email",
+    });
+
+
     return response.responseHandlerWithData(
       res,
       true,
@@ -216,24 +211,17 @@ exports.resendOtp = catchAsyncError(async (req, res, next) => {
       { otpForEmail: otpGenerated }
     );
   }else{
-    const existingOtpWithPhone = await otpModel.findOne({ phone: phone });
+    const existingOtpWithPhone = await otpModel.findOne({ phone: phone,type: "phone" });
     if(existingOtpWithPhone){
-      await otpModel.deleteOne({ _id: existingOtpWithPhone._id });
+      await otpModel.deleteOne({ _id: existingOtpWithPhone._id,type: "phone" });
     }
     const otpGenerated = service.genrateOtp();
-    const otpCreated = await otpModel.create({
+    await otpModel.create({
       fullName: fullName,
       phone: phone,
       otp: otpGenerated,
+      type: "phone",
     });
-    if(!otpCreated){
-      return response.responseHandlerWithError(
-        res,
-        false,
-        responseCode.INTERNAL_SERVER_ERROR,
-        "Failed to create OTP"
-      );
-    }
     return response.responseHandlerWithData(
       res,
       true,
